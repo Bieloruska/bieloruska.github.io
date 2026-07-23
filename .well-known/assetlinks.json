@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "Lenslab_Admin.app",
+        "sha256_cert_fingerprints": ["FD:C8:E1:07:98:42:17:B4:2C:A0:E8:57:70:2A:05:E5:98:F2:AF:16:4B:5E:3F:BC:3B:19:D4:5E:E2:44:5B:8C"]
+      }
+    }]
