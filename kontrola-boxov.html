@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="sk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kontrola boxov LensLab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+*{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}
+/* Layout: one-screen handheld tool — status strip, box card, one action step at a time, nav at bottom */
+:root{
+  --bg:#eef1f3; --panel:#ffffff; --ink:#18232b; --muted:#5d6b75; --line:#d3dade;
+  --accent:#e2621b; --accent-ink:#ffffff; --ok:#1d8a55; --ok-bg:#e1f3ea; --bad:#c4352b; --bad-bg:#fbe6e3; --no:#7c8a94; --no-bg:#e6eaed;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11181d; --panel:#1a242b; --ink:#e6ecef; --muted:#93a2ac; --line:#2c3a43;
+  --accent:#f07a35; --accent-ink:#1a0d05; --ok:#4cc58a; --ok-bg:#16352a; --bad:#f07067; --bad-bg:#3d1d1b; --no:#8d9ba4; --no-bg:#25313a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11181d; --panel:#1a242b; --ink:#e6ecef; --muted:#93a2ac; --line:#2c3a43;
+  --accent:#f07a35; --accent-ink:#1a0d05; --ok:#4cc58a; --ok-bg:#16352a; --bad:#f07067; --bad-bg:#3d1d1b; --no:#8d9ba4; --no-bg:#25313a; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4}
+.wrap{padding-top:env(safe-area-inset-top,0px);max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 24px;display:flex;flex-direction:column;gap:12px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.top h1{font-family:var(--f-display);font-size:20px;letter-spacing:.04em;text-transform:uppercase;margin:0}
+.sync{font-size:12px;color:var(--muted)}
+.progress{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.progress>i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.stats{display:flex;gap:14px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.stats b{color:var(--ink)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.boxhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.boxno{font-family:var(--f-display);font-weight:700;font-size:64px;line-height:.9;letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.boxno small{font-size:22px;color:var(--muted);margin-right:2px}
+.of{color:var(--muted);font-size:13px}
+.expect{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chip{border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.chip span{font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.chip b{font-family:var(--f-display);font-size:28px;line-height:1}
+.chip.yes{background:var(--ok-bg);color:var(--ok)}
+.chip.nope{background:var(--no-bg);color:var(--no)}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}
+.meta dt{color:var(--muted)} .meta dd{margin:0;font-family:var(--f-mono);font-size:13px;word-break:break-all}
+.step{display:flex;flex-direction:column;gap:10px}
+.q{font-family:var(--f-display);font-size:26px;font-weight:600;margin:0;text-wrap:balance}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btns.one{grid-template-columns:1fr}
+.btns.three{grid-template-columns:1fr}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:14px 12px;font-weight:600;font-size:17px;min-height:56px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.good{background:var(--ok);border-color:var(--ok);color:var(--panel)}
+button.warn{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+button.small{min-height:44px;font-size:15px;padding:8px 10px;font-weight:500}
+.scan{display:flex;gap:8px}
+.scan input{flex:1;min-width:0;font-family:var(--f-mono);font-size:18px;padding:14px;border-radius:8px;border:2px dashed var(--accent);background:var(--bg);color:var(--ink)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.done{border-radius:8px;padding:12px;font-weight:600}
+.done.ok{background:var(--ok-bg);color:var(--ok)} .done.diff{background:var(--bad-bg);color:var(--bad)}
+.nav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.jump{display:flex;gap:8px}
+.jump input{flex:1;min-width:0;font:inherit;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-variant-numeric:tabular-nums}
+.foot{display:flex;flex-direction:column;gap:8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;max-width:90%}
+.textlink{background:none;border:none;color:var(--muted);text-decoration:underline;min-height:auto;padding:4px;font-size:13px;font-weight:400}
+#reader{width:100%;border-radius:8px;overflow:hidden;background:#000}
+#reader video{width:100%!important;display:block}
+.camrow{display:flex;gap:8px}
+.camrow button{flex:1}
+.flash{animation:fl .5s}@keyframes fl{from{background:var(--ok-bg)}to{background:var(--panel)}}
+.import{display:flex;flex-direction:column;gap:12px}
+.import input[type=file]{font:inherit}
+.danger{color:var(--bad)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+<div class="wrap">
+  <div class="top"><h1>Kontrola boxov</h1><span class="sync" id="sync">Ukladá sa v tomto mobile</span></div>
+  <div class="progress"><i id="bar"></i></div>
+  <div class="stats" id="stats"></div>
+
+  <section class="card import" id="importCard" hidden>
+    <p class="q">Nahraj zoznam boxov</p>
+    <p class="hint">Vyber súbor <b>lenslab_boxy.xlsx</b> (export z adminu). Zostane uložený v tomto mobile.</p>
+    <input type="file" id="fileIn" accept=".xlsx,.xls,.csv">
+    <p class="hint" id="importMsg"></p>
+  </section>
+
+  <section class="card" id="card" hidden>
+    <div id="reader" hidden></div>
+    <div class="camrow"><button class="small" id="camBtn">📷 Zapnúť kameru</button></div>
+    <div class="boxhead"><div class="boxno" id="boxno"><small>B-</small>0001</div><div class="of" id="of"></div></div>
+    <div class="expect" id="expect"></div>
+    <dl class="meta" id="meta"></dl>
+    <div class="step" id="step"></div>
+  </section>
+
+  <div class="nav">
+    <button class="small" id="prev">◀ Späť</button>
+    <button class="small" id="skip">Preskočiť ▶</button>
+    <button class="small" id="nextOpen">Ďalší voľný</button>
+  </div>
+  <div class="jump"><input id="jumpTo" type="number" inputmode="numeric" min="1" max="1413" placeholder="Číslo boxu"><button class="small" id="jumpBtn">Ísť na box</button></div>
+  <div class="foot">
+    <button class="primary" id="exportAll">Export do Excelu (všetky boxy)</button>
+    <button class="small" id="exportDiff">Export len odchýlok</button>
+    <button class="textlink" id="reimport">Nahrať nový zoznam boxov</button>
+    <button class="textlink danger" id="reset">Vymazať všetky výsledky</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+let DATA=null; // [eanZabrusu, sosovky 0/1, ram 0/1, objednavka, priradene] index = box-1
+const N=1413;
+const LSD='lenslab-boxy-data-v1';
+try{DATA=JSON.parse(localStorage.getItem(LSD)||'null')}catch(e){}
+const LS='lenslab-kontrola-v1';
+let results={}; // box -> record
+try{results=JSON.parse(localStorage.getItem(LS)||'{}')}catch(e){}
+let cur=1, step=null, scanVal='', camOn=false, frameSubmit=null, qr=null, lastCode='', lastAt=0;
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(4,'0');
+const docId=n=>'b'+pad(n);
+
+function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,1800)}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(results))}catch(e){}}
+
+function evaluate(n,rec){
+  const [,lens,frame]=DATA[n-1];
+  rec.status=((rec.frameFound?1:0)===frame && (rec.lensFound?1:0)===lens)?'ok':'diff';
+  return rec;
+}
+async function record(n,rec){
+  rec.box=n; rec.ts=new Date().toISOString(); evaluate(n,rec);
+  results[n]=rec; saveLocal();
+  toast('Box '+n+': '+(rec.status==='ok'?'sedí':'odchýlka'));
+  goNextOpen(n);
+}
+function goNextOpen(from){
+  for(let i=from+1;i<=N;i++) if(!results[i]){go(i);return}
+  for(let i=1;i<=N;i++) if(!results[i]){go(i);return}
+  go(Math.min(from+1,N)); toast('Všetky boxy sú skontrolované');
+}
+function go(n){cur=Math.max(1,Math.min(N,n));step=null;scanVal='';frameSubmit=null;render()}
+
+function startStep(n){
+  const [,lens,frame]=DATA[n-1];
+  if(frame) return 'frame';
+  if(lens) return 'lensOnly';
+  return 'empty';
+}
+
+function render(){
+  frameSubmit=null;
+  const n=cur,[ean,lens,frame,order,assigned]=DATA[n-1];
+  $('boxno').innerHTML='<small>B-</small>'+pad(n);
+  $('of').textContent='box '+n+' z '+N;
+  $('expect').innerHTML=chip('Rám',frame)+chip('Šošovky',lens);
+  $('meta').innerHTML='<dt>EAN zábrusu</dt><dd>'+(ean||'–')+'</dd><dt>Objednávka</dt><dd>'+(order||'–')+'</dd>'+(assigned?'<dt>Priradené</dt><dd>'+esc(assigned)+'</dd>':'');
+  const rec=results[n];
+  const s=$('step');
+  if(rec && !step){
+    s.innerHTML='<div class="done '+rec.status+'">'+(rec.status==='ok'?'Skontrolované: sedí so systémom':'Skontrolované: odchýlka')+'<br><span style="font-weight:400">'+describe(rec)+'</span></div><div class="btns one"><button class="small" id="redo">Skontrolovať znova</button></div>';
+    $('redo').onclick=()=>{step=startStep(n);render()};
+  } else {
+    if(!step) step=startStep(n);
+    s.innerHTML=stepHtml(step,lens,frame);
+    bindStep(step,lens,frame);
+  }
+  updStats();
+  $('prev').disabled=n<=1;
+}
+function updStats(){
+  const done=Object.keys(results).length, diffs=Object.values(results).filter(r=>r.status==='diff').length;
+  $('bar').style.width=(done/N*100)+'%';
+  $('stats').innerHTML='<span>Hotové <b>'+done+'</b> / '+N+'</span><span>Sedí <b>'+(done-diffs)+'</b></span><span>Odchýlky <b>'+diffs+'</b></span>';
+}
+const chip=(l,v)=>'<div class="chip '+(v?'yes':'nope')+'"><span>'+l+'</span><b>'+(v?'Áno':'Nie')+'</b></div>';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function describe(r){
+  const p=[];
+  p.push('Rám: '+(r.frameFound?'je':'nie je')+(r.frameScan?' ('+esc(r.frameScan)+')':''));
+  p.push('Šošovky: '+(r.lensFound?'sú':'nie sú'));
+  return p.join(' · ');
+}
+function stepHtml(st,lens,frame){
+  switch(st){
+    case 'frame': return '<p class="q">Naskenuj rám</p>'+(camOn?'<p class="hint">Namier kameru na čiarový kód rámu.</p>':'<p class="hint">Zapni kameru hore, alebo napíš EAN.</p>')+'<div class="scan"><input id="scanIn" inputmode="numeric" autocomplete="off" placeholder="EAN rámu ručne"><button class="primary small" id="scanOk">OK</button></div><div class="btns one"><button class="warn" id="missing">Nie je v boxe</button></div>';
+    case 'lensAfter': return '<p class="q">Sú v boxe aj šošovky?</p><div class="btns"><button class="good" id="yes">Áno</button><button class="warn" id="no">Nie</button></div><p class="hint">Rám: '+esc(scanVal)+'</p>';
+    case 'whatMissing': return '<p class="q">Čo v boxe nie je?</p><div class="btns three"><button class="warn" id="mFrame">Len rám (šošovky sú)</button><button class="warn" id="mLens">Len šošovky (rám je)</button><button class="warn" id="mBoth">Rám ani šošovky</button></div><button class="textlink" id="back">Späť na sken</button>';
+    case 'lensOnly': return '<p class="q">Sú v boxe šošovky?</p><div class="btns"><button class="good" id="yes">Áno</button><button class="warn" id="no">Nie</button></div>';
+    case 'empty': return '<p class="q">Podľa systému je box prázdny. Je prázdny?</p><div class="btns"><button class="good" id="isEmpty">Áno, prázdny</button><button class="warn" id="notEmpty">Nie, niečo tam je</button></div>';
+    case 'emptyWhat': return '<p class="q">Čo je v boxe?</p><div class="btns three"><button class="small" id="eFrame">Rám</button><button class="small" id="eLens">Šošovky</button><button class="small" id="eBoth">Rám aj šošovky</button></div>';
+  }
+}
+function bindStep(st,lens,frame){
+  const n=cur, on=(id,f)=>{const b=$(id); if(b) b.onclick=f};
+  if(st==='frame'){
+    const inp=$('scanIn');
+    const submit=(code)=>{const v=(typeof code==='string'?code:inp.value).trim(); if(!v){inp.focus();return} scanVal=v; if(lens){step='lensAfter';render()} else record(n,{frameFound:true,frameScan:v,lensFound:false})};
+    inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();submit()}};
+    on('scanOk',()=>submit());
+    frameSubmit=submit;
+    on('missing',()=>{ if(lens){step='whatMissing';render()} else record(n,{frameFound:false,lensFound:false}) });
+  }
+  if(st==='lensAfter'){on('yes',()=>record(n,{frameFound:true,frameScan:scanVal,lensFound:true}));on('no',()=>record(n,{frameFound:true,frameScan:scanVal,lensFound:false}))}
+  if(st==='whatMissing'){
+    on('mFrame',()=>record(n,{frameFound:false,lensFound:true}));
+    on('mLens',()=>record(n,{frameFound:true,lensFound:false}));
+    on('mBoth',()=>record(n,{frameFound:false,lensFound:false}));
+    on('back',()=>{step='frame';render()});
+  }
+  if(st==='lensOnly'){on('yes',()=>record(n,{frameFound:false,lensFound:true}));on('no',()=>record(n,{frameFound:false,lensFound:false}))}
+  if(st==='empty'){on('isEmpty',()=>record(n,{frameFound:false,lensFound:false}));on('notEmpty',()=>{step='emptyWhat';render()})}
+  if(st==='emptyWhat'){on('eFrame',()=>record(n,{frameFound:true,lensFound:false}));on('eLens',()=>record(n,{frameFound:false,lensFound:true}));on('eBoth',()=>record(n,{frameFound:true,lensFound:true}))}
+}
+
+$('prev').onclick=()=>go(cur-1);
+$('skip').onclick=()=>go(cur+1);
+$('nextOpen').onclick=()=>goNextOpen(cur);
+$('jumpBtn').onclick=()=>{const v=parseInt($('jumpTo').value,10); if(v>=1&&v<=N){go(v);$('jumpTo').value=''} else toast('Zadaj číslo 1 až '+N)};
+$('jumpTo').onkeydown=e=>{if(e.key==='Enter')$('jumpBtn').click()};
+
+/* ---------- XLSX export ---------- */
+function buildXlsx(onlyDiff){
+  const H=['Box','EAN zábrusu','Objednávka','Priradené','Rám (systém)','Šošovky (systém)','Rám (v boxe)','EAN rámu (sken)','Šošovky (v boxe)','Výsledok','Odchýlka','Čas kontroly'];
+  const rows=[];
+  for(let n=1;n<=N;n++){
+    const [ean,lens,frame,order,assigned]=DATA[n-1], r=results[n];
+    if(onlyDiff && (!r||r.status!=='diff')) continue;
+    const yn=v=>v?'Áno':'Nie';
+    let diff='';
+    if(r){const d=[]; if((r.frameFound?1:0)!==frame) d.push(frame?'chýba rám':'rám navyše'); if((r.lensFound?1:0)!==lens) d.push(lens?'chýbajú šošovky':'šošovky navyše'); diff=d.join(', ')}
+    rows.push([n,ean,order,assigned,yn(frame),yn(lens),r?yn(r.frameFound):'',r&&r.frameScan||'',r?yn(r.lensFound):'',r?(r.status==='ok'?'Sedí':'Odchýlka'):'Nekontrolované',diff,r?new Date(r.ts).toLocaleString('sk-SK'):'']);
+  }
+  const x=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const L='ABCDEFGHIJKL';
+  const row=(r,i,h)=>'<row r="'+i+'">'+r.map((v,j)=>{const ref=L[j]+i; if(!h&&j===0) return '<c r="'+ref+'"><v>'+v+'</v></c>'; return v===''?'':'<c r="'+ref+'" t="inlineStr"'+(h?' s="1"':'')+'><is><t>'+x(v)+'</t></is></c>'}).join('')+'</row>';
+  const last=rows.length+1;
+  const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="7" customWidth="1"/><col min="2" max="3" width="15" customWidth="1"/><col min="4" max="4" width="18" customWidth="1"/><col min="5" max="7" width="13" customWidth="1"/><col min="8" max="8" width="17" customWidth="1"/><col min="9" max="10" width="14" customWidth="1"/><col min="11" max="11" width="26" customWidth="1"/><col min="12" max="12" width="19" customWidth="1"/></cols><sheetData>'+row(H,1,true)+rows.map((r,i)=>row(r,i+2,false)).join('')+'</sheetData><autoFilter ref="A1:L'+last+'"/></worksheet>';
+  const files={
+  '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+  '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+  'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Kontrola" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Kontrola!$A$1:$L$'+last+'</definedName></definedNames></workbook>',
+  'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+  'xl/styles.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>',
+  'xl/worksheets/sheet1.xml':sheet};
+  const T=new Uint32Array(256);for(let k=0;k<256;k++){let c=k;for(let j=0;j<8;j++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[k]=c>>>0}
+  const crc=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0};
+  const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+  const u16=v=>[v&255,(v>>8)&255],u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+  for(const [name,txt] of Object.entries(files)){const nb=enc.encode(name),d=enc.encode(txt),c=crc(d);
+    const lh=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(d.length),...u32(d.length),...u16(nb.length),...u16(0)]);
+    parts.push(lh,nb,d);
+    cen.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(c),...u32(d.length),...u32(d.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nb);
+    off+=lh.length+nb.length+d.length}
+  const cs=cen.reduce((s,a)=>s+a.length,0),cnt=Object.keys(files).length;
+  const eocd=new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(cnt),...u16(cnt),...u32(cs),...u32(off),...u16(0)]);
+  return {blob:new Blob([...parts,...cen,eocd]),count:rows.length};
+}
+async function doExport(onlyDiff){
+  const {blob,count}=buildXlsx(onlyDiff);
+  if(onlyDiff&&!count){toast('Zatiaľ žiadne odchýlky');return}
+  const d=new Date(),stamp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+  const name='kontrola_boxov_'+(onlyDiff?'odchylky_':'')+stamp+'.xlsx';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([blob],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast('Stiahnuté: '+name)
+}
+$('exportAll').onclick=()=>doExport(false);
+$('exportDiff').onclick=()=>doExport(true);
+
+/* ---------- import ---------- */
+function parseRows(rows){
+  const hdr=rows[0].map(h=>String(h||'').trim().toLowerCase());
+  const ix=k=>hdr.findIndex(h=>h.startsWith(k));
+  const iId=ix('id'),iE=ix('ean'),iL=ix('šošov'),iF=ix('rám'),iO=ix('číslo'),iA=ix('prirad');
+  if(iId<0||iL<0||iF<0) throw new Error('V súbore chýbajú stĺpce ID / Šošovky / Rám');
+  const yes=v=>{const s=String(v||'').trim().toLowerCase();return s&&s!=='nie'&&s!=='-'&&s!=='0'?1:0};
+  const d=[];for(let i=0;i<N;i++)d.push(['',0,0,'','']);
+  let cnt=0;
+  rows.slice(1).forEach(r=>{const id=parseInt(r[iId],10);if(id>=1&&id<=N){d[id-1]=[String(r[iE]??''),yes(r[iL]),yes(r[iF]),String(r[iO]??''),String(iA>=0?(r[iA]??''):'').replace(/^-$/,'')];cnt++}});
+  return {d,cnt};
+}
+$('fileIn').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array',raw:false});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false});
+    const {d,cnt}=parseRows(rows);
+    DATA=d; try{localStorage.setItem(LSD,JSON.stringify(d))}catch(_){}
+    $('importMsg').textContent='Načítaných '+cnt+' boxov.';
+    boot();
+  }catch(err){$('importMsg').textContent='Súbor sa nepodarilo načítať: '+err.message}
+};
+$('reimport').onclick=()=>{$('importCard').hidden=false;$('card').hidden=true;$('fileIn').value=''};
+let resetArm=0;
+$('reset').onclick=()=>{
+  if(Date.now()-resetArm>4000){resetArm=Date.now();$('reset').textContent='Naozaj vymazať? Ťukni znova';setTimeout(()=>$('reset').textContent='Vymazať všetky výsledky',4000);return}
+  results={};saveLocal();$('reset').textContent='Vymazať všetky výsledky';go(1);toast('Výsledky vymazané');
+};
+
+/* ---------- camera ---------- */
+function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=1800;g.gain.value=.15;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.12)}catch(e){} try{navigator.vibrate&&navigator.vibrate(80)}catch(e){}}
+function onCode(code){
+  const now=Date.now();
+  if(code===lastCode&&now-lastAt<2500) return;
+  if(step!=='frame'||!frameSubmit) return;
+  lastCode=code;lastAt=now;beep();
+  $('card').classList.remove('flash');void $('card').offsetWidth;$('card').classList.add('flash');
+  frameSubmit(code);
+}
+async function startCam(){
+  if(typeof Html5Qrcode==='undefined'){toast('Knižnica skenera sa nenačítala, skontroluj internet');return}
+  const F=Html5QrcodeSupportedFormats;
+  $('reader').hidden=false;
+  qr=qr||new Html5Qrcode('reader',{formatsToSupport:[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.CODE_128,F.CODE_39,F.ITF],experimentalFeatures:{useBarCodeDetectorIfSupported:true},verbose:false});
+  try{
+    await qr.start({facingMode:'environment'},{fps:15,qrbox:(w,h)=>({width:Math.floor(w*.85),height:Math.floor(Math.min(h,w)*.4)}),aspectRatio:1.6},onCode,()=>{});
+    camOn=true;$('camBtn').textContent='Vypnúť kameru';render();
+  }catch(e){$('reader').hidden=true;toast('Kamera sa nespustila. Povoľ prístup ku kamere v prehliadači.')}
+}
+async function stopCam(){try{await qr.stop()}catch(e){} camOn=false;$('reader').hidden=true;$('camBtn').textContent='📷 Zapnúť kameru';render()}
+$('camBtn').onclick=()=>camOn?stopCam():startCam();
+
+/* ---------- start ---------- */
+function boot(){
+  $('importCard').hidden=true;$('card').hidden=false;
+  cur=1;for(let i=1;i<=N;i++) if(!results[i]){cur=i;break}
+  render();
+}
+if(DATA&&DATA.length===N) boot(); else {$('importCard').hidden=false; updStats();}
+</script>
+</body></html>
