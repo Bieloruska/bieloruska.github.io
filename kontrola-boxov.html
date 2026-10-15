@@ -8,17 +8,17 @@
 /* Layout: one-screen handheld tool — status strip, box card, one action step at a time, nav at bottom */
 :root{
   --bg:#eef1f3; --panel:#ffffff; --ink:#18232b; --muted:#5d6b75; --line:#d3dade;
-  --accent:#e2621b; --accent-ink:#ffffff; --ok:#1d8a55; --ok-bg:#e1f3ea; --bad:#c4352b; --bad-bg:#fbe6e3; --no:#7c8a94; --no-bg:#e6eaed;
+  --accent:#e2621b; --accent-ink:#ffffff; --ok:#1d8a55; --ok-bg:#e1f3ea; --bad:#c4352b; --bad-bg:#fbe6e3; --no:#7c8a94; --no-bg:#e6eaed; --move:#9a4a0c; --move-bg:#fbeadb;
   --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
   --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#11181d; --panel:#1a242b; --ink:#e6ecef; --muted:#93a2ac; --line:#2c3a43;
-  --accent:#f07a35; --accent-ink:#1a0d05; --ok:#4cc58a; --ok-bg:#16352a; --bad:#f07067; --bad-bg:#3d1d1b; --no:#8d9ba4; --no-bg:#25313a; color-scheme:dark}}
+  --accent:#f07a35; --accent-ink:#1a0d05; --ok:#4cc58a; --ok-bg:#16352a; --bad:#f07067; --bad-bg:#3d1d1b; --no:#8d9ba4; --no-bg:#25313a; --move:#f3a46a; --move-bg:#3a2617; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#11181d; --panel:#1a242b; --ink:#e6ecef; --muted:#93a2ac; --line:#2c3a43;
-  --accent:#f07a35; --accent-ink:#1a0d05; --ok:#4cc58a; --ok-bg:#16352a; --bad:#f07067; --bad-bg:#3d1d1b; --no:#8d9ba4; --no-bg:#25313a; color-scheme:dark}
+  --accent:#f07a35; --accent-ink:#1a0d05; --ok:#4cc58a; --ok-bg:#16352a; --bad:#f07067; --bad-bg:#3d1d1b; --no:#8d9ba4; --no-bg:#25313a; --move:#f3a46a; --move-bg:#3a2617; color-scheme:dark}
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4}
 .wrap{padding-top:env(safe-area-inset-top,0px);max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 24px;display:flex;flex-direction:column;gap:12px}
@@ -72,6 +72,24 @@ button.small{min-height:44px;font-size:15px;padding:8px 10px;font-weight:500}
 .import{display:flex;flex-direction:column;gap:12px}
 .import input[type=file]{font:inherit}
 .danger{color:var(--bad)}
+.alarm{position:fixed;inset:0;z-index:50;background:var(--bad);color:#fff;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:max(24px,env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));text-align:center}
+.alarm h2{font-family:var(--f-display);font-size:44px;line-height:1;margin:0;letter-spacing:.02em;text-transform:uppercase}
+.alarm .big{font-family:var(--f-display);font-size:30px;font-weight:700;line-height:1.15;text-wrap:balance}
+.alarm .big b{display:block;font-size:72px;line-height:1}
+.alarm .codes{font-family:var(--f-mono);font-size:14px;opacity:.9;line-height:1.6}
+.alarm button{background:#fff;color:var(--bad);border:none;font-size:20px;min-height:64px;font-weight:700}
+.alarm.move{background:#b4530f}
+.alarm.move button{color:#b4530f}
+.note{border-radius:8px;padding:9px 12px;font-size:14px;font-weight:500}
+.note.good{background:var(--ok-bg);color:var(--ok)}
+.note.bad{background:var(--bad-bg);color:var(--bad)}
+.note.move{background:var(--move-bg);color:var(--move)}
+.notes{display:flex;flex-direction:column;gap:6px}
+.notes:empty{display:none}
+.step{gap:10px}
+.links{display:flex;flex-wrap:wrap;gap:4px 16px}
+.alarm button.secondary{background:transparent;color:#fff;border:2px solid #fff}
+.wrongnote{background:var(--bad-bg);color:var(--bad);border-radius:8px;padding:10px 12px;font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head><body>
@@ -93,6 +111,7 @@ button.small{min-height:44px;font-size:15px;padding:8px 10px;font-weight:500}
     <div class="boxhead"><div class="boxno" id="boxno"><small>B-</small>0001</div><div class="of" id="of"></div></div>
     <div class="expect" id="expect"></div>
     <dl class="meta" id="meta"></dl>
+    <div id="incoming" class="notes"></div>
     <div class="step" id="step"></div>
   </section>
 
@@ -110,62 +129,100 @@ button.small{min-height:44px;font-size:15px;padding:8px 10px;font-weight:500}
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
+<div class="alarm" id="alarm" hidden role="alertdialog" aria-modal="true" aria-labelledby="alarmTitle">
+  <h2 id="alarmTitle">Pozor, iný EAN</h2>
+  <div class="big" id="alarmBig"></div>
+  <div class="codes" id="alarmCodes"></div>
+  <button id="alarmMoved">Premiestnené</button>
+  <button id="alarmAside">Dal som bokom</button>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-let DATA=null; // [eanZabrusu, sosovky 0/1, ram 0/1, objednavka, priradene] index = box-1
+let DATA=null; // [eanZabrusu, sosovky 0/1, ram 0/1, objednavka, priradene], index = box-1
+let OTHER=[], EANMAP=new Map();
 const N=1413;
-const LSD='lenslab-boxy-data-v1';
-try{DATA=JSON.parse(localStorage.getItem(LSD)||'null')}catch(e){}
-const LS='lenslab-kontrola-v1';
-let results={}; // box -> record
-try{results=JSON.parse(localStorage.getItem(LS)||'{}')}catch(e){}
-let cur=1, step=null, scanVal='', camOn=false, frameSubmit=null, qr=null, lastCode='', lastAt=0;
+const LSD='lenslab-boxy-data-v1', LS='lenslab-kontrola-v1', LSM='lenslab-presuny-v1';
+try{const s=JSON.parse(localStorage.getItem(LSD)||'null'); if(Array.isArray(s)){DATA=s} else if(s&&s.d){DATA=s.d;OTHER=s.other||[]}}catch(e){}
+let results={}; try{results=JSON.parse(localStorage.getItem(LS)||'{}')}catch(e){}
+let MOVES=[]; try{MOVES=JSON.parse(localStorage.getItem(LSM)||'[]')}catch(e){}
+const norm=v=>String(v||'').replace(/\D/g,'').replace(/^0+/,'');
+function buildMap(){EANMAP=new Map(); if(!DATA)return; DATA.forEach((r,i)=>{const k=norm(r[0]); if(k) EANMAP.set(k,i+1)}); OTHER.forEach(([id,e])=>{const k=norm(e); if(k&&!EANMAP.has(k)) EANMAP.set(k,id)})}
+buildMap();
+
+/* session state for the box on screen */
+let cur=1, step=null, S=null;
+function freshSession(){return {frameOk:null, lensOk:null, found:[], eF:false, eL:false, scanKind:'frame', scanBase:'frame', pending:null}}
+let camOn=false, scanHandler=null, qr=null, lastCode='', lastAt=0;
+
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(4,'0');
-const docId=n=>'b'+pad(n);
+const B=n=>'B-'+pad(n);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KIND={frame:'rám',lens:'šošovky'}, KINDU={frame:'Rám',lens:'Šošovky'}, CUDZ={frame:'Cudzí rám',lens:'Cudzie šošovky'};
+function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2000)}
+function save(){try{localStorage.setItem(LS,JSON.stringify(results));localStorage.setItem(LSM,JSON.stringify(MOVES))}catch(e){}}
+const incoming=n=>MOVES.filter(m=>m.to===n&&m.action==='moved');
 
-function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,1800)}
-function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(results))}catch(e){}}
-
-function evaluate(n,rec){
+/* ---------- status logic ---------- */
+function statusOf(n){
+  const r=results[n]; if(!r) return null;
   const [,lens,frame]=DATA[n-1];
-  rec.status=((rec.frameFound?1:0)===frame && (rec.lensFound?1:0)===lens)?'ok':'diff';
-  return rec;
+  const inc=incoming(n);
+  const issues=[];
+  if((r.frameFound?1:0)!==frame) issues.push(frame?'chýba rám':'rám navyše');
+  if((r.lensFound?1:0)!==lens) issues.push(lens?'chýbajú šošovky':'šošovky navyše');
+  (r.found||[]).forEach(f=>issues.push(f.kind==='frame'?'cudzí rám':'cudzie šošovky'));
+  const orig=issues.length?'diff':'ok';
+  const effF=(r.frameFound||inc.some(m=>m.kind==='frame'))?1:0, effL=(r.lensFound||inc.some(m=>m.kind==='lens'))?1:0;
+  const finalOk=effF===frame&&effL===lens;
+  const fin=finalOk?(orig==='ok'?'Sedí':'Opravené presunom'):'Odchýlka';
+  return {orig,issues,fin};
 }
-async function record(n,rec){
-  rec.box=n; rec.ts=new Date().toISOString(); evaluate(n,rec);
-  results[n]=rec; saveLocal();
-  toast('Box '+n+': '+(rec.status==='ok'?'sedí':'odchýlka'));
-  goNextOpen(n);
-}
+
+/* ---------- navigation ---------- */
 function goNextOpen(from){
   for(let i=from+1;i<=N;i++) if(!results[i]){go(i);return}
   for(let i=1;i<=N;i++) if(!results[i]){go(i);return}
   go(Math.min(from+1,N)); toast('Všetky boxy sú skontrolované');
 }
-function go(n){cur=Math.max(1,Math.min(N,n));step=null;scanVal='';frameSubmit=null;render()}
-
-function startStep(n){
-  const [,lens,frame]=DATA[n-1];
-  if(frame) return 'frame';
-  if(lens) return 'lensOnly';
-  return 'empty';
+function go(n){cur=Math.max(1,Math.min(N,n));step=null;S=freshSession();hideAlarm();render()}
+function startStep(n){const [,lens,frame]=DATA[n-1]; return frame?'frame':lens?'lensQ':'empty'}
+function record(rec){
+  const n=cur;
+  rec.box=n; rec.ts=new Date().toISOString();
+  if(S.found.length) rec.found=S.found.slice();
+  if(S.lensOk) rec.lensScan=S.lensOk;
+  results[n]=rec; save();
+  const st=statusOf(n);
+  toast(B(n)+': '+(st.orig==='ok'?'sedí':'odchýlka'));
+  goNextOpen(n);
 }
 
+/* ---------- render ---------- */
+const chip=(l,v)=>'<div class="chip '+(v?'yes':'nope')+'"><span>'+l+'</span><b>'+(v?'Áno':'Nie')+'</b></div>';
+function notes(){
+  let h='';
+  if(S.frameOk) h+='<div class="note good">Rám tohto boxu: '+esc(S.frameOk)+'</div>';
+  if(S.lensOk) h+='<div class="note good">Šošovky overené: '+esc(S.lensOk)+'</div>';
+  S.found.forEach(f=>{h+='<div class="note bad">'+CUDZ[f.kind]+' '+esc(f.ean)+(f.to?(f.action==='moved'?' → premiestnené do '+B(f.to):' → patrí do '+B(f.to)+', dané bokom'):' → dané bokom (neznámy EAN)')+'</div>'});
+  return h;
+}
 function render(){
-  frameSubmit=null;
+  scanHandler=null;
   const n=cur,[ean,lens,frame,order,assigned]=DATA[n-1];
   $('boxno').innerHTML='<small>B-</small>'+pad(n);
   $('of').textContent='box '+n+' z '+N;
   $('expect').innerHTML=chip('Rám',frame)+chip('Šošovky',lens);
   $('meta').innerHTML='<dt>EAN zábrusu</dt><dd>'+(ean||'–')+'</dd><dt>Objednávka</dt><dd>'+(order||'–')+'</dd>'+(assigned?'<dt>Priradené</dt><dd>'+esc(assigned)+'</dd>':'');
-  const rec=results[n];
-  const s=$('step');
+  const inc=incoming(n);
+  $('incoming').innerHTML=inc.map(m=>'<div class="note move">Sem premiestnené: '+KIND[m.kind]+' z '+B(m.from)+' ('+new Date(m.ts).toLocaleTimeString('sk-SK',{hour:'2-digit',minute:'2-digit'})+')</div>').join('');
+  const s=$('step'), rec=results[n];
   if(rec && !step){
-    s.innerHTML='<div class="done '+rec.status+'">'+(rec.status==='ok'?'Skontrolované: sedí so systémom':'Skontrolované: odchýlka')+'<br><span style="font-weight:400">'+describe(rec)+'</span></div><div class="btns one"><button class="small" id="redo">Skontrolovať znova</button></div>';
-    $('redo').onclick=()=>{step=startStep(n);render()};
+    const st=statusOf(n);
+    s.innerHTML='<div class="done '+(st.fin==='Odchýlka'?'diff':'ok')+'">'+(st.orig==='ok'?'Skontrolované: sedí so systémom':'Skontrolované: '+st.issues.join(', '))+(st.fin==='Opravené presunom'?'<br>Opravené presunom':'')+'<br><span style="font-weight:400">'+describe(rec)+'</span></div><div class="btns one"><button class="small" id="redo">Skontrolovať znova</button></div>';
+    $('redo').onclick=()=>{S=freshSession();step=startStep(n);render()};
   } else {
     if(!step) step=startStep(n);
     s.innerHTML=stepHtml(step,lens,frame);
@@ -175,48 +232,74 @@ function render(){
   $('prev').disabled=n<=1;
 }
 function updStats(){
-  const done=Object.keys(results).length, diffs=Object.values(results).filter(r=>r.status==='diff').length;
+  let done=0,diff=0,fixed=0;
+  for(const k in results){done++;const st=statusOf(+k); if(st.orig==='diff') diff++; if(st.fin==='Opravené presunom') fixed++}
   $('bar').style.width=(done/N*100)+'%';
-  $('stats').innerHTML='<span>Hotové <b>'+done+'</b> / '+N+'</span><span>Sedí <b>'+(done-diffs)+'</b></span><span>Odchýlky <b>'+diffs+'</b></span>';
+  $('stats').innerHTML='<span>Hotové <b>'+done+'</b> / '+N+'</span><span>Sedí <b>'+(done-diff)+'</b></span><span>Odchýlky <b>'+diff+'</b></span><span>Presuny <b>'+MOVES.filter(m=>m.action==='moved').length+'</b></span>'+(fixed?'<span>Opravené <b>'+fixed+'</b></span>':'');
 }
-const chip=(l,v)=>'<div class="chip '+(v?'yes':'nope')+'"><span>'+l+'</span><b>'+(v?'Áno':'Nie')+'</b></div>';
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function describe(r){
   const p=[];
   p.push('Rám: '+(r.frameFound?'je':'nie je')+(r.frameScan?' ('+esc(r.frameScan)+')':''));
-  p.push('Šošovky: '+(r.lensFound?'sú':'nie sú'));
+  p.push('Šošovky: '+(r.lensFound?'sú':'nie sú')+(r.lensScan?' (overené '+esc(r.lensScan)+')':''));
+  (r.found||[]).forEach(f=>p.push(CUDZ[f.kind]+' '+esc(f.ean)+(f.to?(f.action==='moved'?' → '+B(f.to):' → bokom (patrí '+B(f.to)+')'):' → bokom')));
   return p.join(' · ');
 }
+const scanBox=(ph)=>'<div class="scan"><input id="scanIn" inputmode="numeric" autocomplete="off" placeholder="'+ph+'"><button class="primary small" id="scanOk">OK</button></div>';
+const camHint=()=>'<p class="hint">'+(camOn?'Namier kameru na čiarový kód.':'Zapni kameru hore, alebo napíš EAN.')+'</p>';
 function stepHtml(st,lens,frame){
   switch(st){
-    case 'frame': return '<p class="q">Naskenuj rám</p>'+(camOn?'<p class="hint">Namier kameru na čiarový kód rámu.</p>':'<p class="hint">Zapni kameru hore, alebo napíš EAN.</p>')+'<div class="scan"><input id="scanIn" inputmode="numeric" autocomplete="off" placeholder="EAN rámu ručne"><button class="primary small" id="scanOk">OK</button></div><div class="btns one"><button class="warn" id="missing">Nie je v boxe</button></div>';
-    case 'lensAfter': return '<p class="q">Sú v boxe aj šošovky?</p><div class="btns"><button class="good" id="yes">Áno</button><button class="warn" id="no">Nie</button></div><p class="hint">Rám: '+esc(scanVal)+'</p>';
-    case 'whatMissing': return '<p class="q">Čo v boxe nie je?</p><div class="btns three"><button class="warn" id="mFrame">Len rám (šošovky sú)</button><button class="warn" id="mLens">Len šošovky (rám je)</button><button class="warn" id="mBoth">Rám ani šošovky</button></div><button class="textlink" id="back">Späť na sken</button>';
-    case 'lensOnly': return '<p class="q">Sú v boxe šošovky?</p><div class="btns"><button class="good" id="yes">Áno</button><button class="warn" id="no">Nie</button></div>';
-    case 'empty': return '<p class="q">Podľa systému je box prázdny. Je prázdny?</p><div class="btns"><button class="good" id="isEmpty">Áno, prázdny</button><button class="warn" id="notEmpty">Nie, niečo tam je</button></div>';
-    case 'emptyWhat': return '<p class="q">Čo je v boxe?</p><div class="btns three"><button class="small" id="eFrame">Rám</button><button class="small" id="eLens">Šošovky</button><button class="small" id="eBoth">Rám aj šošovky</button></div>';
+    case 'frame': return notes()+'<p class="q">Naskenuj EAN zábrusu na ráme</p>'+camHint()+scanBox('EAN zábrusu ručne')+'<div class="btns"><button class="warn" id="missing">Nie je v boxe</button><button class="small" id="noScan">Štítok sa nedá prečítať</button></div>';
+    case 'lensQ': return notes()+'<p class="q">Sú v boxe '+(S.frameOk||frame?'aj ':'')+'šošovky?</p><div class="btns"><button class="good" id="yes">Áno</button><button class="warn" id="no">Nie</button></div><div class="links"><button class="textlink" id="checkLens">Overiť EAN šošoviek</button>'+(!frame&&!S.frameOk?'<button class="textlink" id="extraFrame">V boxe je aj rám? Naskenovať</button>':'')+'</div>';
+    case 'whatMissing': return notes()+'<p class="q">Čo v boxe nie je?</p><div class="btns three"><button class="warn" id="mFrame">Len rám (šošovky sú)</button><button class="warn" id="mLens">Len šošovky (rám je)</button><button class="warn" id="mBoth">Rám ani šošovky</button></div><button class="textlink" id="back">Späť na sken</button>';
+    case 'empty': return notes()+'<p class="q">Podľa systému je box prázdny. Je prázdny?</p><div class="btns"><button class="good" id="isEmpty">Áno, prázdny</button><button class="warn" id="notEmpty">Nie, niečo tam je</button></div>';
+    case 'emptyWhat': return notes()+'<p class="q">Čo je v boxe?</p><div class="btns three"><button class="small" id="eFrame">Rám</button><button class="small" id="eLens">Šošovky</button><button class="small" id="eBoth">Rám aj šošovky</button></div><button class="textlink" id="back">Späť</button>';
+    case 'emptyConfirm': return notes()+'<p class="q">V prázdnom boxe: '+[S.eF?'rám':'',S.eL?'šošovky':''].filter(Boolean).join(' a ')+'</p><p class="hint">Over, kam patria, alebo rovno zapíš.</p><div class="links">'+(S.eF&&!S.frameOk?'<button class="textlink" id="scanF">Naskenovať rám</button>':'')+(S.eL&&!S.lensOk?'<button class="textlink" id="checkLens">Overiť EAN šošoviek</button>':'')+'</div><div class="btns one"><button class="primary" id="write">Zapísať</button></div>';
+    case 'scan': return notes()+'<p class="q">'+(S.scanKind==='frame'?'Naskenuj EAN zábrusu na ráme':'Zadaj alebo naskenuj EAN zábrusu zo šošoviek')+'</p>'+camHint()+scanBox('EAN zábrusu ručne')+'<div class="btns">'+(S.scanKind==='frame'?'<button class="small" id="noScan">Štítok sa nedá prečítať</button>':'')+'<button class="small" id="back">Späť</button></div>';
+    case 'alarm': return '<p class="q">Potvrď upozornenie</p>';
   }
 }
+function openScan(kind,base){S.scanKind=kind;S.scanBase=base;step='scan';render()}
 function bindStep(st,lens,frame){
-  const n=cur, on=(id,f)=>{const b=$(id); if(b) b.onclick=f};
+  const on=(id,f)=>{const b=$(id); if(b) b.onclick=f};
+  const bindInput=submit=>{const inp=$('scanIn'); const go=c=>{const v=(typeof c==='string'?c:inp.value).trim(); if(!v){inp.focus();return} inp.value=''; submit(v)}; inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go()}}; on('scanOk',()=>go()); scanHandler=go};
+  const own=v=>norm(v)===norm(DATA[cur-1][0]);
   if(st==='frame'){
-    const inp=$('scanIn');
-    const submit=(code)=>{const v=(typeof code==='string'?code:inp.value).trim(); if(!v){inp.focus();return} scanVal=v; if(lens){step='lensAfter';render()} else record(n,{frameFound:true,frameScan:v,lensFound:false})};
-    inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();submit()}};
-    on('scanOk',()=>submit());
-    frameSubmit=submit;
-    on('missing',()=>{ if(lens){step='whatMissing';render()} else record(n,{frameFound:false,lensFound:false}) });
+    bindInput(v=>{ if(!own(v)){foreign('frame',v,'frame');return} S.frameOk=v; if(lens){step='lensQ';render()} else record({frameFound:true,frameScan:v,lensFound:false}) });
+    on('missing',()=>{ if(lens){step='whatMissing';render()} else record({frameFound:false,lensFound:false}) });
+    on('noScan',()=>{ S.frameOk='(nečitateľný)'; if(lens){step='lensQ';render()} else record({frameFound:true,frameScan:S.frameOk,lensFound:false}) });
   }
-  if(st==='lensAfter'){on('yes',()=>record(n,{frameFound:true,frameScan:scanVal,lensFound:true}));on('no',()=>record(n,{frameFound:true,frameScan:scanVal,lensFound:false}))}
+  if(st==='lensQ'){
+    const fx=()=>({frameFound:!!S.frameOk,frameScan:S.frameOk||''});
+    on('yes',()=>record({...fx(),lensFound:true}));
+    on('no',()=>record({...fx(),lensFound:false}));
+    on('checkLens',()=>openScan('lens','lensQ'));
+    on('extraFrame',()=>openScan('frame','lensQ'));
+  }
   if(st==='whatMissing'){
-    on('mFrame',()=>record(n,{frameFound:false,lensFound:true}));
-    on('mLens',()=>record(n,{frameFound:true,lensFound:false}));
-    on('mBoth',()=>record(n,{frameFound:false,lensFound:false}));
+    on('mFrame',()=>record({frameFound:false,lensFound:true}));
+    on('mLens',()=>record({frameFound:true,lensFound:false}));
+    on('mBoth',()=>record({frameFound:false,lensFound:false}));
     on('back',()=>{step='frame';render()});
   }
-  if(st==='lensOnly'){on('yes',()=>record(n,{frameFound:false,lensFound:true}));on('no',()=>record(n,{frameFound:false,lensFound:false}))}
-  if(st==='empty'){on('isEmpty',()=>record(n,{frameFound:false,lensFound:false}));on('notEmpty',()=>{step='emptyWhat';render()})}
-  if(st==='emptyWhat'){on('eFrame',()=>record(n,{frameFound:true,lensFound:false}));on('eLens',()=>record(n,{frameFound:false,lensFound:true}));on('eBoth',()=>record(n,{frameFound:true,lensFound:true}))}
+  if(st==='empty'){on('isEmpty',()=>record({frameFound:false,lensFound:false}));on('notEmpty',()=>{step='emptyWhat';render()})}
+  if(st==='emptyWhat'){
+    const pick=(f,l)=>{S.eF=f;S.eL=l;step='emptyConfirm';render()};
+    on('eFrame',()=>pick(true,false));on('eLens',()=>pick(false,true));on('eBoth',()=>pick(true,true));
+    on('back',()=>{step='empty';render()});
+  }
+  if(st==='emptyConfirm'){
+    on('scanF',()=>openScan('frame','emptyConfirm'));
+    on('checkLens',()=>openScan('lens','emptyConfirm'));
+    on('write',()=>record({frameFound:S.eF,frameScan:S.frameOk||'',lensFound:S.eL}));
+  }
+  if(st==='scan'){
+    bindInput(v=>{
+      if(own(v)){ if(S.scanKind==='frame') S.frameOk=v; else S.lensOk=v; toast(S.scanKind==='frame'?'Rám patrí do tohto boxu':'Šošovky patria do tohto boxu'); step=S.scanBase; render(); return }
+      foreign(S.scanKind,v,S.scanBase);
+    });
+    on('noScan',()=>{S.frameOk='(nečitateľný)';step=S.scanBase;render()});
+    on('back',()=>{step=S.scanBase;render()});
+  }
 }
 
 $('prev').onclick=()=>go(cur-1);
@@ -225,30 +308,54 @@ $('nextOpen').onclick=()=>goNextOpen(cur);
 $('jumpBtn').onclick=()=>{const v=parseInt($('jumpTo').value,10); if(v>=1&&v<=N){go(v);$('jumpTo').value=''} else toast('Zadaj číslo 1 až '+N)};
 $('jumpTo').onkeydown=e=>{if(e.key==='Enter')$('jumpBtn').click()};
 
+/* ---------- foreign item alarm ---------- */
+function alarmSound(){try{const c=new (window.AudioContext||window.webkitAudioContext)();[0,.22].forEach(t0=>{const o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=420;g.gain.value=.2;o.connect(g);g.connect(c.destination);o.start(c.currentTime+t0);o.stop(c.currentTime+t0+.16)})}catch(e){} try{navigator.vibrate&&navigator.vibrate([250,120,250,120,400])}catch(e){}}
+function foreign(kind,v,base){
+  const to=EANMAP.get(norm(v))||null;
+  S.pending={kind,ean:v,to,base};
+  step='alarm';
+  const a=$('alarm');
+  a.classList.toggle('move',!!to);
+  $('alarmTitle').textContent='Pozor, iný EAN';
+  $('alarmBig').innerHTML=to?KINDU[kind]+' z iného boxu.<br>Umiestni do boxu<b>'+B(to)+'</b>':'Tento EAN nie je v žiadnom boxe.<br>Daj '+(kind==='frame'?'rám':'šošovky')+' bokom.';
+  $('alarmCodes').innerHTML='Naskenované: '+esc(v)+'<br>Box '+B(cur)+' očakáva: '+esc(DATA[cur-1][0]||'–');
+  $('alarmMoved').hidden=!to;
+  if(to) $('alarmMoved').textContent='Premiestnené do '+B(to);
+  $('alarmAside').textContent=to?'Dal som bokom':'OK, dávam bokom';
+  $('alarmAside').className=to?'secondary':'';
+  a.hidden=false; alarmSound(); render(); setTimeout(()=>$(to?'alarmMoved':'alarmAside').focus(),50);
+}
+function hideAlarm(){const a=$('alarm'); if(a) a.hidden=true}
+function resolveAlarm(action){
+  const p=S.pending; if(!p) return;
+  const m={kind:p.kind,ean:p.ean,from:cur,to:p.to,action,ts:new Date().toISOString()};
+  MOVES.push(m); S.found.push(m); S.pending=null; save();
+  hideAlarm();
+  // the foreign item left the box: in an empty box, drop it from what is "in the box"
+  if(p.base==='emptyConfirm'){ if(p.kind==='frame') S.eF=false; else S.eL=false; step=(S.eF||S.eL)?'emptyConfirm':'empty'; }
+  else step=p.base;
+  render();
+  toast(action==='moved'?(p.kind==='frame'?'Rám zapísaný do ':'Šošovky zapísané do ')+B(p.to):(p.kind==='frame'?'Rám daný bokom':'Šošovky dané bokom'));
+}
+$('alarmMoved').onclick=()=>resolveAlarm('moved');
+$('alarmAside').onclick=()=>resolveAlarm('aside');
+
 /* ---------- XLSX export ---------- */
-function buildXlsx(onlyDiff){
-  const H=['Box','EAN zábrusu','Objednávka','Priradené','Rám (systém)','Šošovky (systém)','Rám (v boxe)','EAN rámu (sken)','Šošovky (v boxe)','Výsledok','Odchýlka','Čas kontroly'];
-  const rows=[];
-  for(let n=1;n<=N;n++){
-    const [ean,lens,frame,order,assigned]=DATA[n-1], r=results[n];
-    if(onlyDiff && (!r||r.status!=='diff')) continue;
-    const yn=v=>v?'Áno':'Nie';
-    let diff='';
-    if(r){const d=[]; if((r.frameFound?1:0)!==frame) d.push(frame?'chýba rám':'rám navyše'); if((r.lensFound?1:0)!==lens) d.push(lens?'chýbajú šošovky':'šošovky navyše'); diff=d.join(', ')}
-    rows.push([n,ean,order,assigned,yn(frame),yn(lens),r?yn(r.frameFound):'',r&&r.frameScan||'',r?yn(r.lensFound):'',r?(r.status==='ok'?'Sedí':'Odchýlka'):'Nekontrolované',diff,r?new Date(r.ts).toLocaleString('sk-SK'):'']);
-  }
+function makeXlsx(sheets){
   const x=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const L='ABCDEFGHIJKL';
-  const row=(r,i,h)=>'<row r="'+i+'">'+r.map((v,j)=>{const ref=L[j]+i; if(!h&&j===0) return '<c r="'+ref+'"><v>'+v+'</v></c>'; return v===''?'':'<c r="'+ref+'" t="inlineStr"'+(h?' s="1"':'')+'><is><t>'+x(v)+'</t></is></c>'}).join('')+'</row>';
-  const last=rows.length+1;
-  const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="7" customWidth="1"/><col min="2" max="3" width="15" customWidth="1"/><col min="4" max="4" width="18" customWidth="1"/><col min="5" max="7" width="13" customWidth="1"/><col min="8" max="8" width="17" customWidth="1"/><col min="9" max="10" width="14" customWidth="1"/><col min="11" max="11" width="26" customWidth="1"/><col min="12" max="12" width="19" customWidth="1"/></cols><sheetData>'+row(H,1,true)+rows.map((r,i)=>row(r,i+2,false)).join('')+'</sheetData><autoFilter ref="A1:L'+last+'"/></worksheet>';
-  const files={
-  '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
-  '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
-  'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Kontrola" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">Kontrola!$A$1:$L$'+last+'</definedName></definedNames></workbook>',
-  'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
-  'xl/styles.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>',
-  'xl/worksheets/sheet1.xml':sheet};
+  const col=j=>{let s='';j++;while(j){const m=(j-1)%26;s=String.fromCharCode(65+m)+s;j=Math.floor((j-1)/26)}return s};
+  const files={};
+  sheets.forEach((sh,si)=>{
+    const W=sh.header.length,last=sh.rows.length+1;
+    const row=(r,i,h)=>'<row r="'+i+'">'+r.map((v,j)=>{const ref=col(j)+i; if(!h&&typeof v==='number') return '<c r="'+ref+'"><v>'+v+'</v></c>'; return (v===''||v==null)?'':'<c r="'+ref+'" t="inlineStr"'+(h?' s="1"':'')+'><is><t>'+x(v)+'</t></is></c>'}).join('')+'</row>';
+    files['xl/worksheets/sheet'+(si+1)+'.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"'+(si===0?' tabSelected="1"':'')+'><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>'+sh.widths.map((w,j)=>'<col min="'+(j+1)+'" max="'+(j+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetData>'+row(sh.header,1,true)+sh.rows.map((r,i)=>row(r,i+2,false)).join('')+'</sheetData><autoFilter ref="A1:'+col(W-1)+last+'"/></worksheet>';
+    sh._ref='$A$1:$'+col(W-1)+'$'+last;
+  });
+  files['[Content_Types].xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+sheets.map((s,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
+  files['_rels/.rels']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+  files['xl/workbook.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((s,i)=>'<sheet name="'+s.name+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets><definedNames>'+sheets.map((s,i)=>'<definedName name="_xlnm._FilterDatabase" localSheetId="'+i+'" hidden="1">\''+s.name+'\'!'+s._ref+'</definedName>').join('')+'</definedNames></workbook>';
+  files['xl/_rels/workbook.xml.rels']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((s,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')+'<Relationship Id="rId'+(sheets.length+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+  files['xl/styles.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>';
   const T=new Uint32Array(256);for(let k=0;k<256;k++){let c=k;for(let j=0;j<8;j++)c=c&1?0xEDB88320^(c>>>1):c>>>1;T[k]=c>>>0}
   const crc=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0};
   const enc=new TextEncoder(),parts=[],cen=[];let off=0;
@@ -260,14 +367,35 @@ function buildXlsx(onlyDiff){
     off+=lh.length+nb.length+d.length}
   const cs=cen.reduce((s,a)=>s+a.length,0),cnt=Object.keys(files).length;
   const eocd=new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(cnt),...u16(cnt),...u32(cs),...u32(off),...u16(0)]);
-  return {blob:new Blob([...parts,...cen,eocd]),count:rows.length};
+  return new Blob([...parts,...cen,eocd],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
-async function doExport(onlyDiff){
-  const {blob,count}=buildXlsx(onlyDiff);
+const fmtT=ts=>ts?new Date(ts).toLocaleString('sk-SK'):'';
+function buildExport(onlyDiff){
+  const yn=v=>v?'Áno':'Nie';
+  const rows=[];
+  for(let n=1;n<=N;n++){
+    const [ean,lens,frame,order,assigned]=DATA[n-1], r=results[n], st=statusOf(n), inc=incoming(n);
+    if(onlyDiff && !((st&&st.orig==='diff')||inc.length)) continue;
+    rows.push([n,ean,order,assigned,yn(frame),yn(lens),
+      r?yn(r.frameFound):'', r&&r.frameScan||'', r?yn(r.lensFound):'', r&&r.lensScan||'',
+      st?(st.orig==='ok'?'Sedí':'Odchýlka'):'Nekontrolované', st?st.issues.join(', '):'',
+      r&&r.found?r.found.map(f=>KIND[f.kind]+' '+f.ean+(f.to?(f.action==='moved'?' → premiestnené do '+B(f.to):' → bokom (patrí '+B(f.to)+')'):' → bokom (neznámy)')).join('; '):'',
+      inc.map(m=>KIND[m.kind]+' z '+B(m.from)).join('; '),
+      st?st.fin:(inc.length?'Doplnené presunom, nekontrolované':''),
+      r?fmtT(r.ts):'']);
+  }
+  const mv=MOVES.map(m=>[fmtT(m.ts),KINDU[m.kind],m.ean,B(m.from),m.to?B(m.to):'neznámy',m.action==='moved'?'Premiestnené':'Dané bokom']);
+  return {count:rows.length+mv.length, blob:makeXlsx([
+    {name:'Kontrola',header:['Box','EAN zábrusu','Objednávka','Priradené','Rám (systém)','Šošovky (systém)','Rám (v boxe)','EAN rámu (sken)','Šošovky (v boxe)','EAN šošoviek (overené)','Výsledok kontroly','Čo nesedelo','Cudzie veci nájdené v boxe','Prijaté presunom','Stav po presunoch','Čas kontroly'],rows,widths:[7,14,13,18,12,14,12,16,14,18,16,26,40,22,22,19]},
+    {name:'Presuny',header:['Čas','Typ','EAN zábrusu','Nájdené v boxe','Patrí do boxu','Akcia'],rows:mv,widths:[19,10,15,15,14,14]}
+  ])};
+}
+function doExport(onlyDiff){
+  const {blob,count}=buildExport(onlyDiff);
   if(onlyDiff&&!count){toast('Zatiaľ žiadne odchýlky');return}
-  const d=new Date(),stamp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+  const d=new Date(),p2=v=>String(v).padStart(2,'0'),stamp=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+'_'+p2(d.getHours())+p2(d.getMinutes());
   const name='kontrola_boxov_'+(onlyDiff?'odchylky_':'')+stamp+'.xlsx';
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([blob],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast('Stiahnuté: '+name)
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast('Stiahnuté: '+name);
 }
 $('exportAll').onclick=()=>doExport(false);
 $('exportDiff').onclick=()=>doExport(true);
@@ -280,17 +408,17 @@ function parseRows(rows){
   if(iId<0||iL<0||iF<0) throw new Error('V súbore chýbajú stĺpce ID / Šošovky / Rám');
   const yes=v=>{const s=String(v||'').trim().toLowerCase();return s&&s!=='nie'&&s!=='-'&&s!=='0'?1:0};
   const d=[];for(let i=0;i<N;i++)d.push(['',0,0,'','']);
-  let cnt=0;
-  rows.slice(1).forEach(r=>{const id=parseInt(r[iId],10);if(id>=1&&id<=N){d[id-1]=[String(r[iE]??''),yes(r[iL]),yes(r[iF]),String(r[iO]??''),String(iA>=0?(r[iA]??''):'').replace(/^-$/,'')];cnt++}});
-  return {d,cnt};
+  let cnt=0; const other=[];
+  rows.slice(1).forEach(r=>{const id=parseInt(r[iId],10); if(id>N&&r[iE]) other.push([id,String(r[iE])]); if(id>=1&&id<=N){d[id-1]=[String(r[iE]??''),yes(r[iL]),yes(r[iF]),String(r[iO]??''),String(iA>=0?(r[iA]??''):'').replace(/^-$/,'')];cnt++}});
+  return {d,cnt,other};
 }
 $('fileIn').onchange=async e=>{
   const f=e.target.files[0]; if(!f) return;
   try{
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array',raw:false});
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false});
-    const {d,cnt}=parseRows(rows);
-    DATA=d; try{localStorage.setItem(LSD,JSON.stringify(d))}catch(_){}
+    const {d,cnt,other}=parseRows(rows);
+    DATA=d; OTHER=other; buildMap(); try{localStorage.setItem(LSD,JSON.stringify({d,other}))}catch(_){}
     $('importMsg').textContent='Načítaných '+cnt+' boxov.';
     boot();
   }catch(err){$('importMsg').textContent='Súbor sa nepodarilo načítať: '+err.message}
@@ -298,8 +426,8 @@ $('fileIn').onchange=async e=>{
 $('reimport').onclick=()=>{$('importCard').hidden=false;$('card').hidden=true;$('fileIn').value=''};
 let resetArm=0;
 $('reset').onclick=()=>{
-  if(Date.now()-resetArm>4000){resetArm=Date.now();$('reset').textContent='Naozaj vymazať? Ťukni znova';setTimeout(()=>$('reset').textContent='Vymazať všetky výsledky',4000);return}
-  results={};saveLocal();$('reset').textContent='Vymazať všetky výsledky';go(1);toast('Výsledky vymazané');
+  if(Date.now()-resetArm>4000){resetArm=Date.now();$('reset').textContent='Naozaj vymazať aj presuny? Ťukni znova';setTimeout(()=>$('reset').textContent='Vymazať všetky výsledky',4000);return}
+  results={};MOVES=[];save();$('reset').textContent='Vymazať všetky výsledky';go(1);toast('Výsledky vymazané');
 };
 
 /* ---------- camera ---------- */
@@ -307,10 +435,10 @@ function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)
 function onCode(code){
   const now=Date.now();
   if(code===lastCode&&now-lastAt<2500) return;
-  if(step!=='frame'||!frameSubmit) return;
+  if((step!=='frame'&&step!=='scan')||!scanHandler) return;
   lastCode=code;lastAt=now;beep();
   $('card').classList.remove('flash');void $('card').offsetWidth;$('card').classList.add('flash');
-  frameSubmit(code);
+  scanHandler(code);
 }
 async function startCam(){
   if(typeof Html5Qrcode==='undefined'){toast('Knižnica skenera sa nenačítala, skontroluj internet');return}
@@ -328,9 +456,9 @@ $('camBtn').onclick=()=>camOn?stopCam():startCam();
 /* ---------- start ---------- */
 function boot(){
   $('importCard').hidden=true;$('card').hidden=false;
-  cur=1;for(let i=1;i<=N;i++) if(!results[i]){cur=i;break}
-  render();
+  let first=1;for(let i=1;i<=N;i++) if(!results[i]){first=i;break}
+  go(first);
 }
-if(DATA&&DATA.length===N) boot(); else {$('importCard').hidden=false; updStats();}
+if(DATA&&DATA.length===N) boot(); else {$('importCard').hidden=false;}
 </script>
 </body></html>
